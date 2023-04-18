@@ -16,9 +16,13 @@
 #define speakerPin 2
 #define leftPhotoPin A6
 #define rightPhotoPin A7
+#define laserPin 30
 
 int leftTeamScore;
 int rightTeamScore;
+int leftTeamScoreB;
+int rightTeamScoreB;
+unsigned long previousMillis = 0; // variable to store the last time "x" was read
 
 //Declares servo objects
 Servo leftRow1;
@@ -61,19 +65,21 @@ void setup() {
   pinMode(leftPhotoPin, INPUT);
   pinMode(rightPhotoPin, INPUT);
   pinMode(speakerPin, OUTPUT);
+  pinMode(laserPin, OUTPUT);
 
   //Instantiates LED Matrices
   redMatrix.begin(0x77);
   blueMatrix.begin();
 
   //Instantiates AlphaNum Displays
-  redDisplay.begin(0x71);
-  setDisplay();
+  redDisplay.begin(0x70);
   //Will need to change address after soldering address bridge pin
   blueDisplay.begin(0x71);
+  setDisplay();
   leftTeamScore = 0;
   rightTeamScore = 0;
-
+  leftTeamScoreB = 0;
+  rightTeamScoreB = 0;
 }
 
 void moveServos(){
@@ -138,45 +144,136 @@ void celebrationSequence(String teamName){
 void incrementScore(String teamName){
   if(teamName == "left")
     {
+      //Single digit incrementing, 0-9
+      if (leftTeamScore < 9) {
       //Increases Score Integer for left/red team
       leftTeamScore++;
       //Sets all values of red AlphaNum Display to new values and writes to display
-      redDisplay.writeDigitAscii(0, 'P');
-      redDisplay.writeDigitAscii(1, '1');
+      redDisplay.writeDigitAscii(0, '1');
+      redDisplay.writeDigitAscii(1, 'P');
       redDisplay.writeDigitAscii(2, '0');
       redDisplay.writeDigitAscii(3, '0' + leftTeamScore);
       redDisplay.writeDisplay();
       delay(100);
+      }
+      //Resets the score if it reaches 100
+      else if (leftTeamScore == 99) {
+        leftTeamScore = 0;
+        leftTeamScoreB = 0;
+        //Sets all values of red AlphaNum Display to new values and writes to display
+        redDisplay.writeDigitAscii(0, '1');
+        redDisplay.writeDigitAscii(1, 'P');
+        redDisplay.writeDigitAscii(2, '0');
+        redDisplay.writeDigitAscii(3, '0');
+        redDisplay.writeDisplay();
+        delay(100);        
+      }
+      //Incrementation for 10-99
+      else {
+        leftTeamScore++;
+        //leftTeamScoreB is for the tenths place. Increment it if the score reaches 10, 20, 30, etc.
+        if (leftTeamScore % 10 == 0) {
+          leftTeamScoreB++;
+        }
+        //Sets all values of red AlphaNum Display to new values and writes to display
+        redDisplay.writeDigitAscii(0, '1');
+        redDisplay.writeDigitAscii(1, 'P');
+        redDisplay.writeDigitAscii(2, '0' + leftTeamScoreB);
+        //Divide rightTeamScore (ones place) by 10 and take the remainder. Ex: If the score is 15, it will output the remainder of 5.
+        redDisplay.writeDigitAscii(3, '0' + (leftTeamScore % 10));
+        redDisplay.writeDisplay();
+        delay(100);
+      }
     }
   if(teamName == "right")
     {
+      //Single digit output, 0-9
+      if (rightTeamScore < 9) {
       //Increases Score Integer for left/red team
       rightTeamScore++;
       //Sets all values of red AlphaNum Display to new values and writes to display
-      blueDisplay.writeDigitAscii(0, 'P');
-      blueDisplay.writeDigitAscii(1, '2');
-      blueDisplay.writeDigitAscii(2, '0');
-      blueDisplay.writeDigitAscii(3, '0' + rightTeamScore);
-      blueDisplay.writeDisplay();
+      redDisplay.writeDigitAscii(0, '2');
+      redDisplay.writeDigitAscii(1, 'P');
+      redDisplay.writeDigitAscii(2, '0');
+      redDisplay.writeDigitAscii(3, '0' + rightTeamScore);
+      redDisplay.writeDisplay();
       delay(100);
-
+      }
+      //Resets score to 0 if score reaches 100  
+      else if (rightTeamScore == 99) {
+        rightTeamScore = 0;
+        rightTeamScoreB = 0;
+        //Sets all values of red AlphaNum Display to new values and writes to display
+        redDisplay.writeDigitAscii(0, '2');
+        redDisplay.writeDigitAscii(1, 'P');
+        redDisplay.writeDigitAscii(2, '0');
+        redDisplay.writeDigitAscii(3, '0');
+        redDisplay.writeDisplay();
+        delay(100);        
+      }
+      //Double digit display
+      else {
+        //Increment the score  
+        rightTeamScore++;
+        //If the score is 10, 20, 30, etc, increment rightTeamSCoreB, which is the tenths digit
+        if (rightTeamScore % 10 == 0) {
+          rightTeamScoreB++;
+        }
+        //Sets all values of red AlphaNum Display to new values and writes to display
+        redDisplay.writeDigitAscii(0, '2');
+        redDisplay.writeDigitAscii(1, 'P');
+        redDisplay.writeDigitAscii(2, '0' + rightTeamScoreB);
+        //Divide rightTeamScore (ones place) by 10 and take the remainder. Ex: If the score is 15, it will output the remainder of 5.
+        redDisplay.writeDigitAscii(3, '0' + (rightTeamScore % 10));
+        redDisplay.writeDisplay();
+        delay(100);
+      }
     }
 }
 
 void setDisplay(){
-  redDisplay.writeDigitAscii(0, 'P');
-  redDisplay.writeDigitAscii(1, '1');
+  redDisplay.writeDigitAscii(0, '1');
+  redDisplay.writeDigitAscii(1, 'P');
   redDisplay.writeDigitAscii(2, '0');
   redDisplay.writeDigitAscii(3, '0' + leftTeamScore);
   redDisplay.writeDisplay();
-  blueDisplay.writeDigitAscii(0, 'P');
-  blueDisplay.writeDigitAscii(1, '2');
+  blueDisplay.writeDigitAscii(0, '2');
+  blueDisplay.writeDigitAscii(1, 'P');
   blueDisplay.writeDigitAscii(2, '0');
   blueDisplay.writeDigitAscii(3, '0' + rightTeamScore);
   blueDisplay.writeDisplay();
-  delay(100);
+  //delay(100);
 
 
+}
+
+//Turn off the display
+void resetDisplay(){
+  //Reset the score
+  leftTeamScore = 0;
+  leftTeamScoreB = 0;
+  redDisplay.writeDigitAscii(0, ' ');
+  redDisplay.writeDigitAscii(1, ' ');
+  redDisplay.writeDigitAscii(2, ' ');
+  redDisplay.writeDigitAscii(3, ' ');
+  redDisplay.writeDisplay();
+  blueDisplay.writeDigitAscii(0, ' ');
+  blueDisplay.writeDigitAscii(1, ' ');
+  blueDisplay.writeDigitAscii(2, ' ');
+  blueDisplay.writeDigitAscii(3, ' ');
+  blueDisplay.writeDisplay();
+  //delay(100);
+}
+
+void controlLaser(){
+  if(Serial.read() == 'x')
+    {
+      digitalWrite(laserPin, HIGH);      
+    }
+  if(Serial.read() == 'v')
+    {
+      digitalWrite(laserPin, LOW);
+    }
 }
 //Flashes LEDS
 //Write code to make leds write out which team scores
@@ -262,7 +359,6 @@ void countDown(){
     blueMatrix.setTextSize(1);
     blueMatrix.setTextWrap(false);
     blueMatrix.setTextColor(100);
-    blueMatrix.print("3");
     redMatrix.setTextSize(1);
     redMatrix.setTextWrap(false);
     redMatrix.setTextColor(100);
@@ -299,9 +395,26 @@ void playSound(){
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  //moveServos();
+  //Turn off display and reset score if "x" is not read after 5 minutes
+  if ((millis() - previousMillis) >= 300000) {
+    resetDisplay();
+  }
+  //Turn display back on if "x" is read after the display is turned off
+  if (Serial.read() == 'x') {
+    if ((millis() - previousMillis) >= 300000) {
+      setDisplay();
+  }
+   //Increment the score if the display is on and "x" is read
+    else {
+      incrementScore("left");
+    }
+    // update previousMillis to current time
+    previousMillis = millis();
+  }
+  //moveServos()
   //moveLaser();
   //checkLight();
-  setDisplay();
+  //setDisplay();
+  //countDown();
+  //controlLaser();
 }

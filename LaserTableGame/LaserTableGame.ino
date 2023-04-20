@@ -2,10 +2,11 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_IS31FL3731.h>
 #include "Adafruit_LEDBackpack.h"
-#include<stdio.h>
+#include <stdio.h>
 #include <string.h>
 
-//Defines pin number for respective parts
+// Defines pin number for respective parts
+// potentiometer pins
 #define leftPot1 A0
 #define leftPot2 A1
 #define leftPot3 A2
@@ -13,10 +14,25 @@
 #define rightPot2 A4
 #define rightPot1 A5
 
+// servo pins
+#define leftRow1Pin 13
+#define leftRow2Pin 12
+#define leftRow3Pin 11
+#define laserServoPin 10
+#define rightRow3Pin 9
+#define rightRow2Pin 8
+#define rightRow1Pin 7
+
+// miscellaneous pins
 #define speakerPin 2
 #define leftPhotoPin A6
 #define rightPhotoPin A7
-#define laserPin 30
+#define laser1Pin 30
+#define laser2Pin 32
+
+// constants
+#define LASER_PERIOD 8000 // includes laser off time
+#define LASER_OFF_TIME 3000 // ms laser is turned off when moved
 
 int leftTeamScore;
 int rightTeamScore;
@@ -45,13 +61,13 @@ void setup() {
   Serial.begin(9600);
   // put your setup code here, to run once:
   //Attaches servo motors to respective pins
-  leftRow1.attach(13);
-  leftRow2.attach(12);
-  leftRow3.attach(11);
-  laserServo.attach(10);
-  rightRow3.attach(9);
-  rightRow2.attach(8);
-  rightRow1.attach(7);
+  leftRow1.attach(leftRow1Pin);
+  leftRow2.attach(leftRow2Pin);
+  leftRow3.attach(leftRow2Pin);
+  laserServo.attach(laserServoPin);
+  rightRow3.attach(rightRow3Pin);
+  rightRow2.attach(rightRow2Pin);
+  rightRow1.attach(rightRow1Pin);
 
   //Declares potentiometer pins as inputs
   pinMode(leftPot1, INPUT);
@@ -65,7 +81,8 @@ void setup() {
   pinMode(leftPhotoPin, INPUT);
   pinMode(rightPhotoPin, INPUT);
   pinMode(speakerPin, OUTPUT);
-  pinMode(laserPin, OUTPUT);
+  pinMode(laser1Pin, OUTPUT);
+  pinMode(laser2Pin, OUTPUT);
 
   //Instantiates LED Matrices
   redMatrix.begin(0x77);
@@ -109,10 +126,22 @@ void moveServos(){
 }
 
 //Moves laser for gameplay
-//TODO: Create better algorithm for laser movement
-void moveLaser(){
-  int laserLoc = rand() % 181;
-  laserServo.write(laserLoc);
+void moveLaser() {
+  static unsigned long lastRun = millis();
+  static unsigned long laserOn = millis() + LASER_OFF_TIME;
+  static bool whichLaser;
+  if (millis() >= laserOn) {
+    if (whichLaser) digitalWrite(laser1Pin, HIGH);
+    else digitalWrite(laser2Pin, HIGH);
+  }
+  if (millis() - lastRun < LASER_PERIOD) return;
+  lastRun = millis();
+  laserOn = millis() + LASER_OFF_TIME;
+  digitalWrite(laser1Pin, LOW);
+  digitalWrite(laser2Pin, LOW);
+  whichLaser = !whichLaser;
+  int angle = random(181);
+  laserServo.write(angle);
 }
 
 //Checks if light is over threshold
@@ -265,16 +294,6 @@ void resetDisplay(){
   //delay(100);
 }
 
-void controlLaser(){
-  if(Serial.read() == 'x')
-    {
-      digitalWrite(laserPin, HIGH);      
-    }
-  if(Serial.read() == 'v')
-    {
-      digitalWrite(laserPin, LOW);
-    }
-}
 //Flashes LEDS
 //Write code to make leds write out which team scores
 void ledAnimation(String teamName){
@@ -412,9 +431,8 @@ void loop() {
     previousMillis = millis();
   }
   //moveServos()
-  //moveLaser();
+  moveLaser();
   //checkLight();
   //setDisplay();
   //countDown();
-  //controlLaser();
 }

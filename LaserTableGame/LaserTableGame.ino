@@ -87,32 +87,6 @@ void setup() {
   rightTeamScoreB = 0;
 }
 
-void moveServos(){
-  //Reads potentiometer values
-  int leftLoc1 = analogRead(leftPot1);
-  int leftLoc2 = analogRead(leftPot2);
-  int leftLoc3 = analogRead(leftPot3);
-  int rightLoc3 = analogRead(rightPot3);
-  int rightLoc2 = analogRead(rightPot2);
-  int rightLoc1 = analogRead(rightPot1);
-
-  //Maps analog values to degrees
-  leftLoc1 = map(leftLoc1, 0, 1023, 0 , 180);
-  leftLoc2 = map(leftLoc2, 0, 1023, 0 , 180);
-  leftLoc3 = map(leftLoc3, 0, 1023, 0 , 180);
-  rightLoc3 = map(rightLoc3, 0, 1023, 0 , 180);
-  rightLoc2 = map(rightLoc2, 0, 1023, 0 , 180);
-  rightLoc1 = map(rightLoc1, 0, 1023, 0 , 180);
-
-  //Moves Servos to new locations
-  leftRow1.write(leftLoc1);
-  leftRow2.write(leftLoc2);
-  leftRow3.write(leftLoc3);
-  rightRow3.write(rightLoc3);
-  rightRow2.write(rightLoc2);
-  rightRow1.write(rightLoc1);
-}
-
 //Moves laser for gameplay
 void moveLaser() {
   static unsigned long lastRun = millis();
@@ -495,8 +469,7 @@ void beginServo(int j) {
   potValueSum[j] = 0;
 }
 
-
-void loop() {
+void callServos() {
   beginServo(0);
   delay(10);
   beginServo(1);
@@ -508,12 +481,14 @@ void loop() {
   beginServo(4);
   delay(10);
   beginServo(5);
-  delay(10);
+}
 
 
-  //moveServos()
+void loop() {
+  //callServos();
   //moveLaser();
   //checkLight();
-  //setDisplay();
+
+  //I don't think we need this function
   //countDown();
 }

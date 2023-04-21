@@ -5,23 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-// Defines pin number for respective parts
-// potentiometer pins
-#define leftPot1 A0
-#define leftPot2 A1
-#define leftPot3 A2
-#define rightPot3 A3
-#define rightPot2 A4
-#define rightPot1 A5
 
-// servo pins
-#define leftRow1Pin 13
-#define leftRow2Pin 12
-#define leftRow3Pin 11
-#define laserServoPin 10
-#define rightRow3Pin 9
-#define rightRow2Pin 8
-#define rightRow1Pin 7
 
 // miscellaneous pins
 #define speakerPin 2
@@ -38,16 +22,30 @@ int leftTeamScore;
 int rightTeamScore;
 int leftTeamScoreB;
 int rightTeamScoreB;
-unsigned long previousMillis = 0; // variable to store the last time "x" was read
+unsigned long previousMillis_B = 0; // variable to store the last time "x" was read
 
-//Declares servo objects
-Servo leftRow1;
-Servo leftRow2;
-Servo leftRow3;
-Servo laserServo;
-Servo rightRow3;
-Servo rightRow2;
-Servo rightRow1;
+
+// Define the pins for the servos and potentiometers
+int servoPin[] = {13, 12, 11, 9, 8, 7}; // add more pins as needed
+int potPin[] = {A0, A1, A2, A3, A4, A5}; // add more pins as needed
+
+int potValue[6] = {0, 0, 0, 0, 0, 0};
+
+//PotValueSum takes the average of 20 readings to lower noise due to the electricity
+long potValueSum[6] = {0, 0, 0, 0, 0, 0};
+
+//Define variables to keep track of previous inputs and milliseconds since last input
+long previousSum[6] = {0, 0, 0, 0, 0, 0};
+
+unsigned long previousMillis[6] = {0, 0, 0, 0, 0, 0};
+
+bool stopCheck[6] = {false, false, false, false, false, false};
+
+//Change to 300000
+const int expireTime = 300000;
+
+// Create servo objects to control the servo
+Servo servo[6];
 
 //Declares LED Matrices
 Adafruit_IS31FL3731_Wing redMatrix = Adafruit_IS31FL3731_Wing();
@@ -61,21 +59,11 @@ void setup() {
   Serial.begin(9600);
   // put your setup code here, to run once:
   //Attaches servo motors to respective pins
-  leftRow1.attach(leftRow1Pin);
-  leftRow2.attach(leftRow2Pin);
-  leftRow3.attach(leftRow2Pin);
-  laserServo.attach(laserServoPin);
-  rightRow3.attach(rightRow3Pin);
-  rightRow2.attach(rightRow2Pin);
-  rightRow1.attach(rightRow1Pin);
-
   //Declares potentiometer pins as inputs
-  pinMode(leftPot1, INPUT);
-  pinMode(leftPot2, INPUT);
-  pinMode(leftPot3, INPUT);
-  pinMode(rightPot3, INPUT);
-  pinMode(rightPot2, INPUT);
-  pinMode(rightPot1, INPUT);
+  for (int i = 0; i < 6; i++) {
+    servo[i].attach(servoPin[i]);
+    pinMode(potPin[i], INPUT);
+  }
 
   //Declares photoresistor and buzzer pins
   pinMode(leftPhotoPin, INPUT);
@@ -413,25 +401,118 @@ void playSound(){
   delay(3000);
 }
 
-void loop() {
-  //Turn off display and reset score if "x" is not read after 5 minutes
-  if ((millis() - previousMillis) >= 300000) {
-    resetDisplay();
-  }
-  //Turn display back on if "x" is read after the display is turned off
-  if (Serial.read() == 'x') {
-    if ((millis() - previousMillis) >= 300000) {
-      setDisplay();
-  }
-   //Increment the score if the display is on and "x" is read
-    else {
-      incrementScore("left");
+
+void moveServos(int potValue, int j){
+    // If the potentiometer is turned left, rotate the servo counterclockwise; vice-versa if the potentiometer is turned right.
+    if (potValue >= 0 && potValue <= 61) {
+    servo[j].writeMicroseconds(1000);
     }
-    // update previousMillis to current time
-    previousMillis = millis();
+    else if (potValue >= 62 && potValue <= 161) {
+    servo[j].writeMicroseconds(1100);
+    }
+    else if (potValue >= 162 && potValue <= 261) {
+    servo[j].writeMicroseconds(1200);
+    }
+      else if (potValue >= 262 && potValue <= 361) {
+    servo[j].writeMicroseconds(1300);
+    }
+      else if (potValue >= 362 && potValue <= 461) {
+    servo[j].writeMicroseconds(1400);
+    }
+      //Dead zone
+    else if (potValue >= 462 && potValue <= 561) {
+      servo[j].writeMicroseconds(1500);
+    }
+      else if (potValue >= 562 && potValue <= 661) {
+    servo[j].writeMicroseconds(1600);
+    }
+      else if (potValue >= 662 && potValue <= 761) {
+    servo[j].writeMicroseconds(1700);
+    }
+      else if (potValue >= 762 && potValue <= 861) {
+    servo[j].writeMicroseconds(1800);
+    }
+      else if (potValue >= 862 && potValue <= 961) {
+    servo[j].writeMicroseconds(1900);
+    }
+        else if (potValue >= 962 && potValue <= 1023) {
+    servo[j].writeMicroseconds(2000);
+    }
   }
+
+void servoNoiseReduction(int j) {
+  //For loop to take the average of readings to reduce noise
+  for (int i = 0; i < 20; i++) {
+    potValue[j] = analogRead(potPin[j]);
+    potValueSum[j] += potValue[j];
+    delay(5);
+  }
+
+  //Divide the sum by 20 to take the average
+  potValueSum[j] = (potValueSum[j] / 20);
+
+  //If variance is more than 5, set previousMillis
+  if (abs(potValueSum[j] - previousSum[j]) > 30) {
+    if (stopCheck[0] && stopCheck[1] && stopCheck[2] && stopCheck[3] && stopCheck[4] && stopCheck[5] == true) {
+      setDisplay();
+    }
+    for (int i = 0; i < 6; i++) {
+      previousMillis[i] = millis();
+      if (stopCheck[i] == true) {
+        stopCheck[i] = false;
+      }
+    }
+    delay(10);
+  }
+}
+
+void updateMillis(int j) {
+    stopCheck[j] = true;
+    if (stopCheck[0] && stopCheck[1] && stopCheck[2] && stopCheck[3] && stopCheck[4] && stopCheck[5] == true) {
+      resetDisplay();
+      for (int i = 0; i < 6; i++) {
+        servo[i].writeMicroseconds(1500);
+      }
+    }
+}
+
+
+void beginServo(int j) {
+  servoNoiseReduction(j);
+  
+  //Has more than 5 seconds passed since an input? If so, detach the servo and set stopCheck to true.
+  if ((millis()) - previousMillis[j] > expireTime) {
+    updateMillis(j);
+  }
+  //Otherwise, run the servo normally.
+  else {
+    moveServos(potValueSum[j], j);
+    stopCheck[j] = false;
+  }
+
+  //Update the sum values after calculating everything
+  previousSum[j] = potValueSum[j];
+  potValueSum[j] = 0;
+}
+
+
+void loop() {
+  beginServo(0);
+  delay(10);
+  beginServo(1);
+  delay(10);
+  beginServo(2);
+  delay(10);
+  beginServo(3);
+  delay(10);
+  beginServo(4);
+  delay(10);
+  beginServo(5);
+  delay(10);
+
+
   //moveServos()
-  moveLaser();
+  //moveLaser();
   //checkLight();
   //setDisplay();
   //countDown();
